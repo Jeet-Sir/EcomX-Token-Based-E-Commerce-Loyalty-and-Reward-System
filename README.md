@@ -47,6 +47,8 @@ We have made significant progress in developing the core infrastructure for Ecom
 The `EcomXToken.sol` smart contract is deployed on the **BTCS Testnet v2**.
 
 * **Contract Address:** `0x50d2af0104Cf9b9C3d4B5447f83b31Daf1C35baBe`
+* ![image](image.png)
+
 
 * **Network (BTCS Testnet v2) Configuration for MetaMask:**
 
