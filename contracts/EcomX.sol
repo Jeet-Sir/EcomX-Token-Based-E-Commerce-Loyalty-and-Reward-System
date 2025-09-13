@@ -3,7 +3,7 @@ pragma solidity ^0.8.20; // Consistent pragma version
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol"; // Imports ERC20 and adds burn functionality
 import "@openzeppelin/contracts/access/AccessControl.sol"; // Imports AccessControl for role management
-import "@openzeppelin/contracts/utils/Pausable.sol";     // NEW: Imports Pausable for emergency pause functionality
+import "@openzeppelin/contracts/utils/Pausable.sol";     // Imports Pausable for emergency pause functionality
 
 /**
  * @title EcomXToken
@@ -13,17 +13,16 @@ import "@openzeppelin/contracts/utils/Pausable.sol";     // NEW: Imports Pausabl
  * and a pausable mechanism for emergency control.
  * It uses custom errors for more efficient and clearer error handling.
  */
-contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits Pausable for pause/unpause functionality
+contract EcomXToken is ERC20Burnable, AccessControl, Pausable {
 
     // --- Custom Errors ---
-    // These provide more gas-efficient and structured error feedback to the frontend (compared to string reverts).
-    // This is a significant gas optimization for revert conditions.
+    // These provide more gas-efficient and structured error feedback to the frontend.
     error EcomXToken__InvalidAddress();
     error EcomXToken__ZeroAmount();
     error EcomXToken__InsufficientBalance(uint256 required, uint256 available);
-    error EcomXToken__MerchantAlreadyAdded(address merchant); // More specific error for role management
-    error EcomXToken__MerchantNotFound(address merchant);     // More specific error for role management
-    error EcomXToken__ArraysLengthMismatch(); // For batch operations
+    error EcomXToken__MerchantAlreadyAdded(address merchant); // More specific error
+    error EcomXToken__MerchantNotFound(address merchant);     // More specific error
+    error EcomXToken__ArraysLengthMismatch();
 
     // --- Roles Definitions ---
     // DEFAULT_ADMIN_ROLE is built-in to AccessControl and controls all other roles.
@@ -31,8 +30,7 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
     bytes32 public constant MERCHANT_ROLE = keccak256("MERCHANT_ROLE"); // Role for authorized merchants
 
     // --- Events ---
-    // Events are crucial for off-chain monitoring and frontend updates.
-    // While emitting events costs gas, their benefit for transparency and dApp functionality outweighs the cost.
+    // Events for transparent off-chain monitoring of contract actions.
     event MerchantAdded(address indexed merchant);
     event MerchantRemoved(address indexed merchant);
     event CustomerRewarded(address indexed customer, uint256 amount);
@@ -68,8 +66,6 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * @param merchant The address to grant the merchant role to.
      */
     function addMerchant(address merchant) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Optimization: Using custom errors (EcomXToken__InvalidAddress, EcomXToken__MerchantAlreadyAdded)
-        // for more gas-efficient reverts compared to string messages.
         if (merchant == address(0)) revert EcomXToken__InvalidAddress();
         if (hasRole(MERCHANT_ROLE, merchant)) revert EcomXToken__MerchantAlreadyAdded(merchant);
         _grantRole(MERCHANT_ROLE, merchant);
@@ -83,8 +79,6 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * @param merchant The address to revoke the merchant role from.
      */
     function removeMerchant(address merchant) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Optimization: Using custom errors (EcomXToken__InvalidAddress, EcomXToken__MerchantNotFound)
-        // for more gas-efficient reverts.
         if (merchant == address(0)) revert EcomXToken__InvalidAddress();
         if (!hasRole(MERCHANT_ROLE, merchant)) revert EcomXToken__MerchantNotFound(merchant);
         _revokeRole(MERCHANT_ROLE, merchant);
@@ -100,7 +94,7 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * Emits a `Paused` event.
      */
     function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _pause(); // Inherited from Pausable, handles pausing the contract
+        _pause();
     }
 
     /**
@@ -109,7 +103,7 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * Emits an `Unpaused` event.
      */
     function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _unpause(); // Inherited from Pausable, handles unpausing the contract
+        _unpause();
     }
 
     // --- Core Loyalty Program Functions ---
@@ -122,13 +116,11 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * @param customer The address of the customer to reward.
      * @param amount The amount of ECMX tokens to mint as a reward.
      */
-    function rewardCustomer(address customer, uint256 amount) public onlyRole(MERCHANT_ROLE) whenNotPaused { // Optimization: `whenNotPaused` modifier saves gas by reverting early if paused
-        // Optimization: Using custom errors (EcomXToken__InvalidAddress, EcomXToken__ZeroAmount)
-        // for more gas-efficient reverts.
+    function rewardCustomer(address customer, uint256 amount) public onlyRole(MERCHANT_ROLE) whenNotPaused {
         if (customer == address(0)) revert EcomXToken__InvalidAddress();
         if (amount == 0) revert EcomXToken__ZeroAmount();
 
-        _mint(customer, amount); // Mints new tokens to the customer's address (inherently involves storage writes, which are costly but necessary)
+        _mint(customer, amount); // Mints new tokens to the customer's address
         emit CustomerRewarded(customer, amount);
     }
 
@@ -143,20 +135,15 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
     function rewardCustomersInBatch(address[] calldata customers, uint256[] calldata amounts)
         public
         onlyRole(MERCHANT_ROLE)
-        whenNotPaused // Optimization: `whenNotPaused` modifier saves gas by reverting early if paused
+        whenNotPaused
     {
-        // Optimization: Using custom errors (EcomXToken__ArraysLengthMismatch, EcomXToken__InvalidAddress, EcomXToken__ZeroAmount)
-        // for more gas-efficient reverts.
         if (customers.length != amounts.length) revert EcomXToken__ArraysLengthMismatch();
 
-        // Major Gas Optimization: Processing multiple rewards in a single transaction.
-        // This amortizes fixed transaction costs (like transaction header, signature verification)
-        // over many operations, making it significantly cheaper than N individual transactions.
         for (uint256 i = 0; i < customers.length; i++) {
             if (customers[i] == address(0)) revert EcomXToken__InvalidAddress();
             if (amounts[i] == 0) revert EcomXToken__ZeroAmount();
-            _mint(customers[i], amounts[i]); // Each mint involves storage writes, which are the primary cost here.
-            emit CustomerRewarded(customers[i], amounts[i]); // Emit for each successful reward (adds gas cost, but crucial for transparency)
+            _mint(customers[i], amounts[i]);
+            emit CustomerRewarded(customers[i], amounts[i]); // Emit for each successful reward
         }
     }
 
@@ -167,17 +154,15 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
      * Reverts if the amount is zero or if the caller has insufficient balance.
      * @param amount The amount of ECMX tokens to burn for redemption.
      */
-    function redeemTokens(uint256 amount) public whenNotPaused { // Optimization: `whenNotPaused` modifier saves gas by reverting early if paused
-        // Optimization: Using custom errors (EcomXToken__ZeroAmount, EcomXToken__InsufficientBalance)
-        // for more gas-efficient reverts.
+    function redeemTokens(uint256 amount) public whenNotPaused {
         if (amount == 0) revert EcomXToken__ZeroAmount();
         // Check for sufficient balance using a custom error with details
         if (balanceOf(msg.sender) < amount) {
             revert EcomXToken__InsufficientBalance(amount, balanceOf(msg.sender));
         }
 
-        _burn(msg.sender, amount); // Burns tokens from the caller's balance (inherently involves storage writes)
-        emit TokensRedeemed(msg.sender, amount); // Emitting event (adds gas cost, but crucial for transparency)
+        _burn(msg.sender, amount); // Burns tokens from the caller's balance
+        emit TokensRedeemed(msg.sender, amount);
     }
 
     // --- Helper Function ---
@@ -185,11 +170,11 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
     /**
      * @dev Checks if a given address has the `MERCHANT_ROLE`.
      * This is a public view function, accessible off-chain (e.g., by the frontend)
-     * to determine a user's merchant status. View functions are free to call (no gas cost for reads).
+     * to determine a user's merchant status.
      * @param account The address to check.
      * @return True if the account has the `MERCHANT_ROLE`, false otherwise.
      */
     function isMerchant(address account) public view returns (bool) {
-        return hasRole(MERCHANT_ROLE, account); // Inherited from AccessControl
+        return hasRole(MERCHANT_ROLE, account);
     }
 }
