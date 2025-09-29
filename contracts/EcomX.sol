@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol"; // Im
 import "@openzeppelin/contracts/access/AccessControl.sol"; // Imports AccessControl for role management
 import "@openzeppelin/contracts/utils/Pausable.sol";     // NEW: Imports Pausable for emergency pause functionality
 
-/**
- * @title EcomXToken
- * @dev ERC20 token for EcomX Loyalty and Reward System.
- * Implements ERC20 standard, burn functionality for redemptions,
- * role-based access control for managing merchants and minting rewards,
- * and a pausable mechanism for emergency control.
- * It uses custom errors for more efficient and clearer error handling.
- */
+
+  @title EcomXToken
+  @dev ERC20 token for EcomX Loyalty and Reward System.
+  Implements ERC20 standard, burn functionality for redemptions,
+  role-based access control for managing merchants and minting rewards,
+  and a pausable mechanism for emergency control.
+  It uses custom errors for more efficient and clearer error handling.
+ 
 contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits Pausable for pause/unpause functionality
 
     // --- Custom Errors ---
