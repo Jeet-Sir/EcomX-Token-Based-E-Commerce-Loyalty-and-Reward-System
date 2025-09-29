@@ -38,7 +38,9 @@ We have made significant progress in developing the core infrastructure for Ecom
 
 * **Loyalty Token Staking with Bonus Incentives:** Implement staking mechanisms where customers can lock their ECMX tokens to earn additional rewards or special perks.
 
-* **Layer-2 Integration for Scalability:** Investigate deploying on Layer-2 solutions to improve transaction speed and reduce gas costs for high-volume operations.
+* **Layer-2 Integration for Scalability:** Investigate deploying on Layer-2 solutions to improve transaction speed and
+*
+* // reduce gas costs for high-volume operations.
 
 * **Advanced Redemption Logic:** Develop more sophisticated on-chain redemption rules, potentially tying token burning to specific discount tiers or product categories via smart contract logic.
 
