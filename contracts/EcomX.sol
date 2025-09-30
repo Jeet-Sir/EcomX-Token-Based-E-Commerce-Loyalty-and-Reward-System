@@ -18,7 +18,7 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
 
     // --- Custom Errors ---
     // These provide more gas-efficient and structured error feedback to the frontend (compared to string reverts).
-    // This is a significant gas optimization for revert conditions.
+  
     error EcomXToken__InvalidAddress();
     error EcomXToken__ZeroAmount();
     error EcomXToken__InsufficientBalance(uint256 required, uint256 available);
@@ -28,7 +28,6 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
 
     // --- Roles Definitions ---
     // DEFAULT_ADMIN_ROLE is built-in to AccessControl and controls all other roles.
-    // The contract deployer automatically gets this role.
     bytes32 public constant MERCHANT_ROLE = keccak256("MERCHANT_ROLE"); // Role for authorized merchants
 
     // --- Events ---
@@ -54,7 +53,7 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
         _grantRole(DEFAULT_ADMIN_ROLE, adminToGrant);
 
         // Optional: If the contract deployer (msg.sender) is also intended to be a merchant from the start,
-        // grant them the MERCHANT_ROLE. This is a common setup for initial testing or single-merchant systems.
+
         if (initialAdmin == address(0)) {
             _grantRole(MERCHANT_ROLE, msg.sender);
         }
