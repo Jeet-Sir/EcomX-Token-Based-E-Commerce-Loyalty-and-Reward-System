@@ -184,17 +184,6 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
 
 
 
-    // --- Pause/Unpause Functionality (NEW) ---
-
-
-
-    /**
-
-     * @dev Pauses all token operations (rewarding, redeeming).
-
-     * Only callable by an account with DEFAULT_ADMIN_ROLE.
-
-     */
 
     function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
 
