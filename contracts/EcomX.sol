@@ -114,17 +114,17 @@ contract EcomXToken is ERC20Burnable, AccessControl, Pausable { // NEW: Inherits
 
 
 
-    // The following functions are inherited from AccessControl and are available:
+     // The following functions are inherited from AccessControl and are available:
 
-    // - hasRole(bytes32 role, address account) returns (bool)
+     - hasRole(bytes32 role, address account) returns (bool)
 
-    // - getRoleAdmin(bytes32 role) returns (bytes32)
+     - getRoleAdmin(bytes32 role) returns (bytes32)
 
-    // - grantRole(bytes32 role, address account)
+     - grantRole(bytes32 role, address account)
 
-    // - revokeRole(bytes32 role, address account)
+     - revokeRole(bytes32 role, address account)
 
-    // - renounceRole(bytes32 role, address account)
+     - renounceRole(bytes32 role, address account)
 
 
 
