@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17; // Consider updating to ^0.8.20 for consistency with latest OZ contracts
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
