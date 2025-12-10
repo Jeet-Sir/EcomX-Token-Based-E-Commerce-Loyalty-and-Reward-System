@@ -1,61 +1,114 @@
-pragma solidity ^0.8.17; // Consider updating to ^0.8.20 for consistency with latest OZ contracts
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20; // Updated pragma to a more recent version
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol"; // Imports ERC20 and adds burn functionality
+import "@openzeppelin/contracts/access/AccessControl.sol"; // Imports AccessControl for role management
 
-contract EcomXToken is ERC20, Ownable { // Good inheritance setup
-    mapping(address => bool) public merchants;
-    mapping(address => bool) public customers; // This mapping's utility is questionable as currently used
+/**
+ * @title EcomXToken
+ * @dev ERC20 token for EcomX Loyalty and Reward System.
+ * Implements ERC20 standard, burn functionality for redemptions,
+ * and role-based access control for managing merchants and minting rewards.
+ */
+contract EcomXToken is ERC20Burnable, AccessControl {
+    // --- Define Roles ---
+    // DEFAULT_ADMIN_ROLE is built-in to AccessControl and controls all other roles.
+    // The contract deployer gets this role.
 
-    event MerchantAdded(address indexed merchant);
-    event CustomerRewarded(address indexed customer, uint256 amount);
-    // Consider an event for token burning too, e.g., event TokensBurned(address indexed burner, uint256 amount);
+    // Role for authorized merchants who can reward customers by minting tokens.
+    bytes32 public constant MERCHANT_ROLE = keccak256("MERCHANT_ROLE");
 
-    constructor() ERC20("EcomX Loyalty Token", "ECMX") Ownable(msg.sender) { // Add Ownable(msg.sender) to constructor
-        _mint(msg.sender, 1_000_000 * 10 ** decimals()); // Initial mint to deployer
+    // --- Events ---
+    event MerchantAdded(address indexed merchant); // Emitted when a merchant is granted the MERCHANT_ROLE
+    event MerchantRemoved(address indexed merchant); // Emitted when a merchant's role is revoked
+    event CustomerRewarded(address indexed customer, uint256 amount); // Emitted when tokens are minted as a reward
+    event TokensRedeemed(address indexed burner, uint256 amount); // Emitted when tokens are burned for redemption
+
+    /**
+     * @dev Constructor to initialize the ERC20 token and set up initial roles.
+     * @param initialAdmin Optional: Address to grant initial DEFAULT_ADMIN_ROLE if not msg.sender.
+     */
+    constructor(address initialAdmin) ERC20("EcomX Loyalty Token", "ECMX") {
+        // The deployer (msg.sender) gets the DEFAULT_ADMIN_ROLE if no specific admin is provided.
+        // This admin can then grant/revoke other roles (like MERCHANT_ROLE).
+        if (initialAdmin == address(0)) {
+            _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+            // Optionally, grant the deployer the MERCHANT_ROLE automatically if they are also the first merchant.
+            _grantRole(MERCHANT_ROLE, msg.sender);
+        } else {
+            _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
+            // If an initialAdmin is specified, they might also be the first merchant,
+            // or another address might receive the MERCHANT_ROLE separately.
+        }
     }
 
-    // Function to add a new merchant
-    function addMerchant(address merchant) external onlyOwner { // Correct access control for adding merchants
+    // --- Merchant Management Functions (Callable by DEFAULT_ADMIN_ROLE) ---
+
+    /**
+     * @dev Grants the MERCHANT_ROLE to an address, allowing them to reward customers.
+     * Only callable by an account with DEFAULT_ADMIN_ROLE.
+     * @param merchant The address to grant merchant role to.
+     */
+    function addMerchant(address merchant) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(merchant != address(0), "EcomXToken: Invalid merchant address");
-        require(!merchants[merchant], "EcomXToken: Merchant already added");
-        merchants[merchant] = true;
+        // AccessControl's _grantRole handles checking if role is already granted.
+        _grantRole(MERCHANT_ROLE, merchant);
         emit MerchantAdded(merchant);
     }
 
-    // Core reward function
-    function rewardCustomer(address customer, uint256 amount) external {
-        require(merchants[msg.sender], "Not an authorized merchant"); // Good check for merchant authorization
+    /**
+     * @dev Revokes the MERCHANT_ROLE from an address, preventing them from rewarding customers.
+     * Only callable by an account with DEFAULT_ADMIN_ROLE.
+     * @param merchant The address to revoke merchant role from.
+     */
+    function removeMerchant(address merchant) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(merchant != address(0), "EcomXToken: Invalid merchant address");
+        // AccessControl's _revokeRole handles checking if role exists.
+        _revokeRole(MERCHANT_ROLE, merchant);
+        emit MerchantRemoved(merchant);
+    }
+
+    // --- Core Loyalty Program Functions ---
+
+    /**
+     * @dev Allows an authorized merchant to reward a customer by minting new ECMX tokens.
+     * This function increases the total supply of tokens.
+     * Only callable by an account with MERCHANT_ROLE.
+     * @param customer The address of the customer to reward.
+     * @param amount The amount of ECMX tokens to mint as a reward.
+     */
+    function rewardCustomer(address customer, uint256 amount) public onlyRole(MERCHANT_ROLE) {
         require(customer != address(0), "EcomXToken: Invalid customer address");
         require(amount > 0, "EcomXToken: Reward amount must be greater than zero");
 
-        // MAJOR LOGIC FLAW/DESIGN CHOICE:
-        // _transfer(owner(), customer, amount);
-        // This transfers tokens from the *contract owner's* balance (i.e., the deployer's initially minted supply)
-        // to the customer. This means:
-        // 1. The contract owner needs to have enough tokens to distribute all rewards.
-        // 2. You are NOT creating new tokens for rewards; you are just redistributing existing ones.
-        //    This means your total supply will remain constant unless you add a minting mechanism.
-        //    A typical "loyalty program" *mints* new tokens as rewards.
-        _transfer(owner(), customer, amount); // Transfer from the contract owner's balance
+        // Mint new tokens to the customer's address.
+        // This is the core change: tokens are now created, not transferred from owner's balance.
+        _mint(customer, amount);
 
-        customers[customer] = true; // This just marks if they've ever received tokens, but not used elsewhere.
-                                    // Its utility depends on future logic.
         emit CustomerRewarded(customer, amount);
     }
 
-    // Function to allow users to burn their own tokens for redemption
-    function burnTokens(uint256 amount) external {
-        require(amount > 0, "EcomXToken: Burn amount must be greater than zero");
-        _burn(msg.sender, amount); // Correctly burns from the caller's balance
-        // Consider emitting an event here: emit TokensBurned(msg.sender, amount);
+    /**
+     * @dev Allows a token holder (customer) to redeem their ECMX tokens by burning them.
+     * The tokens are permanently removed from circulation.
+     * @param amount The amount of ECMX tokens to burn for redemption.
+     */
+    function redeemTokens(uint256 amount) public {
+        require(amount > 0, "EcomXToken: Redemption amount must be greater than zero");
+        // _burn is inherited from ERC20Burnable and burns from msg.sender's balance.
+        _burn(msg.sender, amount);
+        emit TokensRedeemed(msg.sender, amount);
     }
 
-    // Function to check a customer's balance
-    function customerBalance(address customer) external view returns (uint256) {
-        // You're simply wrapping balanceOf(customer), which is already public/external from ERC20.
-        // You could just tell users to call balanceOf(customer) directly.
-        // If there's specific loyalty-related logic, it should go here.
-        return balanceOf(customer);
+    // --- Helper Functions (inherited from ERC20/ERC20Burnable) ---
+
+    // Note: The `balanceOf(address account)` function is already public and view
+    // in the ERC20 standard, so a redundant `customerBalance` function is not needed.
+    // Users can simply call `balanceOf(customerAddress)` directly.
+    // Similarly, `totalSupply()` and `allowance()` are also available.
+
+    // If you need to check if an address has the merchant role:
+    function isMerchant(address account) public view returns (bool) {
+        return hasRole(MERCHANT_ROLE, account);
     }
 }
